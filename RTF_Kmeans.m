@@ -35,8 +35,10 @@ while( sum(sum((TDOA-last_TDOA).^2)) > 1e-8 )
          TDOA(pair,i) = mean(  alphi(pair,loc)  );
       end
       % to make sure one column of TDOA belong to only one person(classified by the difference of speakers' speech propotion )
-      [~,I] = sort(prob(pair,:),2);
-      TDOA(pair,:) = TDOA(pair,I);
+      if frm < 10
+         [~,I] = sort(prob(pair,:),2);
+         TDOA(pair,:) = TDOA(pair,I);
+      end
    end  
 end
 
@@ -45,11 +47,15 @@ detaN = prob(:,1)- prob(:,2);
 [~,loc_max] = max(detaN);     
 [~,loc_min] = min(detaN);
 detaN2 = detaN;
+prob2 = prob;
 if ref == real_loc
    detaN2(ref)=[];
+   prob2(real_loc,:)=[];
 else
    detaN2(max(ref,real_loc))=[];
    detaN2(min(ref,real_loc))=[];
+   prob2(max(ref,real_loc),:)=[];
+   prob2(min(ref,real_loc),:)=[];
 end
 mean_detaN = sum(detaN2)/(length(detaN2));
 if loc_max == ref
@@ -75,10 +81,12 @@ if abs(detaN(real_loc)-mean_detaN)> min([abs(mean_detaN),100])
          loc1 = find(loc_real_martric == i);
          prob1(i) = length(loc1);
          TDOA(real_loc,i) = mean(  alphi(real_loc,loc1)  );
-      end
-      [~,I] = sort(prob1,2);
-      TDOA(real_loc,:) = TDOA(real_loc,I);
-   end     
+      end  
+   end  
+   [~,I] = sort(prob1);
+   TDOA(real_loc,:) = TDOA(real_loc,I);
+   [~,I_now] = sort(sum(prob2,1));
+   TDOA(real_loc,:) = TDOA(real_loc,I_now);
 end
    
    

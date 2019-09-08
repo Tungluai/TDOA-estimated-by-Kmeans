@@ -6,7 +6,6 @@ close all
 
 [speech , fs ] = audioread('male_female_pure_mixture.wav');
 speech = speech';
-speech = [speech,speech];
 [Nch,Nz] = size(speech);
 Nfft =floor( fs*128/1000); % 64 ms per frame
 Nshift = floor(Nfft/4);
@@ -34,18 +33,19 @@ freq = 2:floor(800/fs*Nfft);
 TDOA = zeros(Nch,nsrce);
 alphi = zeros(Nch,length(freq));
 g = [1;zeros(nsrce-1,1)];
-g = flipud(g); % change the enhanced person in the case of 2 speakers
+%g = flipud(g); % change the enhanced person in the case of 2 speakers
 enhansp = find(1 == g); 
 ref = ceil(rand(1)*Nch);% randomly select a channel as reference channel
-disp(ref);
+fprintf('The reference channel is: Channel %d\n',ref);
+errorch =ref;
 %%
  for frm = 1 : Nfrm  
-    freqaxis = (frm-1)*Nshift+1:(frm-1)*Nshift+Nfft;
+    frmaxis = (frm-1)*Nshift+1:(frm-1)*Nshift+Nfft;
     %STFT
     for ch = 1 : Nch
-         Y(ch ,:) = fft(win .* speech(ch ,freqaxis),Nfft);
+         Y(ch ,:) = fft(win .* speech(ch ,frmaxis),Nfft);
     end
-    [C,TDOA,alphi] = RTF_Kmeans(Y,TDOA,alphi,nsrce,frm,ref,Nbin,fs,Nfft,Nch);
+    [C,TDOA,alphi,errorch] = RTF_Kmeans(Y,TDOA,alphi,errorch,nsrce,frm,ref,Nbin,fs,Nfft,Nch);
     for bin=1:Nbin  
         base(:,:,bin) = (C(:,:,bin)'* C(:,:,bin));
         %check the martrix
@@ -72,9 +72,9 @@ disp(ref);
         q(:,bin) = MWF(PhiS(:,:,bin), PhiN(:,:,bin),PhiSN(:,bin),1.11); 
     end
     % load all stuff
-    yout(freqaxis) = yout(freqaxis) + win .* real(ifft([Yout,conj(Yout(end-1:-1:2))]));   
+    yout(frmaxis) = yout(frmaxis) + win .* real(ifft([Yout,conj(Yout(end-1:-1:2))]));   
 end
-audiowrite('RTF.wav', yout(end-Nz/2:end),fs);
+audiowrite('RTF.wav', yout,fs);
 %%
 % plot
 figure(2);
@@ -91,18 +91,20 @@ plot(speech(1,:));
 subplot(4,1,4);
 plot(audioread('RTF.wav'));
 
-[ scoresbefore ] = pesq( 'male.wav', 'male_female_pure_mixture.wav' );
-[ scoresafter ] = pesq( 'male.wav', 'RTF.wav' );
-[ scoresideal ] = pesq( 'male.wav', 'male.wav' );
-fprintf('scorebefore: %f\n',scoresbefore);
-fprintf('scoreafter: %f\n',scoresafter);
-fprintf('scoreideal: %f\n',scoresideal);
-fprintf(['improved PESQ socre : %f\n'],scoresafter-scoresbefore);
-
-[ scoresbefore ] = pesq( 'female.wav', 'male_female_pure_mixture.wav' );
-[ scoresafter ] = pesq( 'female.wav', 'RTF.wav' );
-[ scoresideal ] = pesq( 'female.wav', 'female.wav' );
-fprintf('scorebefore: %f\n',scoresbefore);
-fprintf('scoreafter: %f\n',scoresafter);
-fprintf('scoreideal: %f\n',scoresideal);
-fprintf(['improved PESQ socre : %f\n'],scoresafter-scoresbefore);
+if g(1) == 0
+   [ scoresbefore ] = pesq( 'male.wav', 'male_female_pure_mixture.wav' );
+   [ scoresafter ] = pesq( 'male.wav', 'RTF.wav' );
+   [ scoresideal ] = pesq( 'male.wav', 'male.wav' );
+   fprintf('scorebefore: %f\n',scoresbefore);
+   fprintf('scoreafter: %f\n',scoresafter);
+   fprintf('scoreideal: %f\n',scoresideal);
+   fprintf(['improved PESQ socre : %f\n'],scoresafter-scoresbefore);
+else
+   [ scoresbefore ] = pesq( 'female.wav', 'male_female_pure_mixture.wav' );
+   [ scoresafter ] = pesq( 'female.wav', 'RTF.wav' );
+   [ scoresideal ] = pesq( 'female.wav', 'female.wav' );
+   fprintf('scorebefore: %f\n',scoresbefore);
+   fprintf('scoreafter: %f\n',scoresafter);
+   fprintf('scoreideal: %f\n',scoresideal);
+   fprintf(['improved PESQ socre : %f\n'],scoresafter-scoresbefore);
+end
